@@ -277,6 +277,46 @@ class SpectralSelector(SelectorMixin, BaseEstimator, metaclass=ABCMeta):
             cv.fit(X, y)
             return cv.best_score_, cv.best_estimator_, *args
 
+    # WARNING: COPIED FROM GPT
+    def _validate_data(self,X,y=None,*,reset: bool = True,accept_sparse=False,ensure_min_samples: int = 1,ensure_min_features: int = 1,**check_params,):
+        """
+        Minimal compatibility shim for scikit-learn's BaseEstimator._validate_data.
+
+        - Validates X (and y, if provided).
+        - Sets `n_features_in_` on first fit (when reset=True).
+        - Returns (X, y) when y is not None, else X.
+        """
+        # Import locally to avoid touching module-level imports
+        from sklearn.utils.validation import check_X_y, check_array
+
+        # Default checks (can be overridden via **check_params)
+        default_check_kwargs = dict(
+            accept_sparse=accept_sparse,
+            ensure_2d=True,
+            dtype=None,                 # keep dtype unless downstream requires change
+            force_all_finite=True,      # spectra should be finite
+            ensure_min_samples=ensure_min_samples,
+            ensure_min_features=ensure_min_features,
+        )
+        # Allow caller to override any of the defaults
+        default_check_kwargs.update(check_params or {})
+
+        if y is None or y == "no_validation":
+            # Only X is validated
+            X_checked = check_array(X, **default_check_kwargs)
+            if reset:
+                # Record number of features seen during fit-like validation
+                self.n_features_in_ = X_checked.shape[1]
+            return X_checked
+        else:
+            # Validate X and y together
+            X_checked, y_checked = check_X_y(X, y, **default_check_kwargs)
+            if reset:
+                self.n_features_in_ = X_checked.shape[1]
+            return X_checked, y_checked
+
+
+
     def fit(self, X, y, mask=None):
         """Run the feature selection process.
 
@@ -304,7 +344,7 @@ class SpectralSelector(SelectorMixin, BaseEstimator, metaclass=ABCMeta):
             n_features = X.shape[1]
             X = X[:, mask_indices]
 
-        X, y = self._validate_data(X, y, accept_sparse=False, ensure_min_samples=2, ensure_min_features=2)
+#        X, y = self._validate_data(X, y, accept_sparse=False, ensure_min_samples=2, ensure_min_features=2)
         self._dispatch_fit(X, y)
 
         if mask is not None:
